@@ -74,7 +74,7 @@ def check_errors():
             print("\033[1;31;40m {}".format(json.dumps(info)))
         else:
             if SHOW_ONLY_ERRORS == 0:
-                info['message'] = '{} is ok: error_rate: {}'.format(service, error_rate)
+                info['message'] = '{} is ok'.format(service)
                 info['cmd'] = None
                 print("\033[1;32;40m {}".format(json.dumps(info)))
     
