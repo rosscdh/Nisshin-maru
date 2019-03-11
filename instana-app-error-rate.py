@@ -3,6 +3,7 @@ import time
 import json
 import pprint
 import requests
+from alkali import Database, Model, fields, tznow
 
 TOKEN = os.getenv('TOKEN', '')
 INSTANA_ENDPOINT = os.getenv('INSTANA_ENDPOINT', '')
@@ -12,6 +13,22 @@ SHOW_ONLY_ERRORS = int(os.getenv('SHOW_ONLY_ERRORS', 1))
 
 assert TOKEN, 'You must define a TOKEN'
 assert INSTANA_ENDPOINT, 'You must define a INSTANA_ENDPOINT'
+
+TRENDS = dict()
+PREVIOUS = dict()
+
+
+{"service": "recipe-details-28-b75tp", "error_rate": 0.0, "message": "recipe-details-28-b75tp is ok", "when": "2019-03-11 15:43:50", "cmd": null}
+
+class Entry(Model):
+   when           = fields.DateTimeField(primary_key=True)
+   service        = fields.StringField()
+   message        = fields.StringField()
+   cmd            = fields.StringField()
+   error_rate     = fields.FloatField()
+   created        = fields.DateTimeField(auto_now_add=True)
+
+db = Database(models=[Entry], save_on_exit=True)
 
 
 def get_data():
@@ -25,6 +42,10 @@ def get_data():
         "metrics": [
             {
                 "metric": "errors",
+                "aggregation": "MEAN"
+            },
+            {
+                "metric": "latency",
                 "aggregation": "MEAN"
             }
         ],
@@ -46,6 +67,7 @@ def get_data():
         return resp.json().get('items', [])
     else:
         print(resp.status_code, resp.content)
+        return []
 
 def check_errors():
     items = get_data()
@@ -65,10 +87,23 @@ def check_errors():
             'message': '',
             'when': when
         }
-        #import pdb;pdb.set_trace()
+        # PREVIOUS[service] = 0 if service not in PREVIOUS else PREVIOUS[service][0:10] 
+        # TRENDS[service] = [] if service not in TRENDS else TRENDS[service][0:10]
+        # TRENDS[service].insert(0, error_rate)
+
+        # trend = sum(TRENDS[service])
+
+        # if PREVIOUS[service] > trend:
+        #     trending = 'up'
+        # elif PREVIOUS[service] < trend:
+        #     trending = 'down'
+        # else:
+        #     trending = 'no-change'
+
+        # info['trending'] = trending
+        # PREVIOUS[service] = trend
+        
         if error_rate >= MAX_ERROR_RATE:
-            # pprint.pprint(data)
-            # pprint.pprint(error_rate)
             info['message'] = '{} is erroring: error_rate: {}'.format(service, error_rate)
             info['cmd'] = 'oc delete pod {}'.format(service)
             print("\033[1;31;40m {}".format(json.dumps(info)))
@@ -77,6 +112,11 @@ def check_errors():
                 info['message'] = '{} is ok'.format(service)
                 info['cmd'] = None
                 print("\033[1;32;40m {}".format(json.dumps(info)))
+
+        entry = Entry(**info)
+        entry.save()
+
+    db.store()
     
 
 if __name__ == "__main__":
