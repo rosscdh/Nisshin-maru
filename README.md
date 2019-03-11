@@ -3,7 +3,10 @@
 Script to query Instana to get errors above a threshhold
 
 ```sh
-SHOW_ONLY_ERRORS=1 TOKEN=qwerty123 INSTANA_ENDPOINT=https://YOURAPP.instana.io/api/application-monitoring/analyze/call-groups  python instana-app-error-rate.py
+SHOW_ONLY_ERRORS=1 \
+TOKEN=qwerty123 \
+INSTANA_ENDPOINT=https://YOURAPP.instana.io/api/application-monitoring/analyze/call-groups \
+python instana-app-error-rate.py
 ```
 
 outputs
