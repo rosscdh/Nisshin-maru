@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import pprint
 import requests
 
@@ -10,7 +11,7 @@ REFRESH = int(os.getenv('REFRESH', 10))
 
 assert TOKEN, 'You must define a TOKEN'
 assert INSTANA_ENDPOINT, 'You must define a INSTANA_ENDPOINT'
-#https://tmde2-vorwerkprod.instana.io/#/analyze;callList.dataSource=calls;callList.groupBy=%7B%22name%22%3A%22kubernetes.pod.name%22%7D;callList.tagFilter;groups.metrics=!(metric~latency~aggregation~MEAN)(metric~errors~aggregation~MEAN)~;groups.orderBy=errors_MEAN_Agg;groups.orderDirection=DESC?timeline.to&timeline.ws=300000&timeline.fm&timeline.ar=true
+
 
 def get_data():
     headers = {
@@ -69,11 +70,11 @@ def check_errors():
             # pprint.pprint(error_rate)
             info['message'] = '{} is erroring: error_rate: {}'.format(service, error_rate)
             info['cmd'] = 'oc delete pod {}'.format(service)
-            print("\033[1;31;40m {}".format(info))
+            print("\033[1;31;40m {}".format(json.dumps(info)))
         else:
             info['message'] = '{} is ok: error_rate: {}'.format(service, error_rate)
             info['cmd'] = None
-            print("\033[1;32;40m {}".format(info))
+            print("\033[1;32;40m {}".format(json.dumps(info)))
     
 
 if __name__ == "__main__":
