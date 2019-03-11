@@ -8,6 +8,7 @@ TOKEN = os.getenv('TOKEN', '')
 INSTANA_ENDPOINT = os.getenv('INSTANA_ENDPOINT', '')
 MAX_ERROR_RATE = float(os.getenv('MAX_ERROR_RATE', '1.5'))
 REFRESH = int(os.getenv('REFRESH', 10))
+SHOW_ONLY_ERRORS = int(os.getenv('SHOW_ONLY_ERRORS', 1))
 
 assert TOKEN, 'You must define a TOKEN'
 assert INSTANA_ENDPOINT, 'You must define a INSTANA_ENDPOINT'
@@ -72,9 +73,10 @@ def check_errors():
             info['cmd'] = 'oc delete pod {}'.format(service)
             print("\033[1;31;40m {}".format(json.dumps(info)))
         else:
-            info['message'] = '{} is ok: error_rate: {}'.format(service, error_rate)
-            info['cmd'] = None
-            print("\033[1;32;40m {}".format(json.dumps(info)))
+            if SHOW_ONLY_ERRORS == 0:
+                info['message'] = '{} is ok: error_rate: {}'.format(service, error_rate)
+                info['cmd'] = None
+                print("\033[1;32;40m {}".format(json.dumps(info)))
     
 
 if __name__ == "__main__":

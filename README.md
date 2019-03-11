@@ -3,7 +3,7 @@
 Script to query Instana to get errors above a threshhold
 
 ```sh
-TOKEN=qwerty123 INSTANA_ENDPOINT=https://YOURAPP.instana.io/api/application-monitoring/analyze/call-groups  python instana-app-error-rate.py
+SHOW_ONLY_ERRORS=1 TOKEN=qwerty123 INSTANA_ENDPOINT=https://YOURAPP.instana.io/api/application-monitoring/analyze/call-groups  python instana-app-error-rate.py
 ```
 
 outputs
@@ -26,3 +26,10 @@ oc delete pod funky-application-18-f8bff
 ```
 
 or something
+
+### notes
+
+```
+# will show ok messages too
+SHOW_ONLY_ERRORS = 0
+```
