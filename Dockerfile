@@ -4,7 +4,7 @@ RUN apk add --no-cache python3-dev libstdc++ && \
     apk add --no-cache g++ && \
     ln -s /usr/include/locale.h /usr/include/xlocale.h && \
     pip3 install numpy && \
-    pip3 install pandas requests alkali
+    pip3 install pandas requests tinydb
 
 
 WORKDIR /src

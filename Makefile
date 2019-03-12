@@ -4,7 +4,7 @@ default: build
 
 PREFIX   := rosscdh/nisshin-maru
 TAG      := $(shell git describe --tags --always)
-REGISTRY := ""
+REGISTRY := registry.hub.docker.com
 
 BUILD_REPO_ORIGIN := $(shell git config --get remote.origin.url)
 BUILD_COMMIT_SHA1 := $(shell git rev-parse --short HEAD)
@@ -21,7 +21,7 @@ build:
 		--build-arg BUILD_BRANCH=${BUILD_BRANCH} \
 		--build-arg BUILD_DATE=${BUILD_DATE} \
 		--build-arg BUILD_REPO_ORIGIN=${BUILD_REPO_ORIGIN} \
-		./docker --no-cache
+		. --no-cache
 
 login:
 	docker login ${REGISTRY}
@@ -32,5 +32,10 @@ push: tag
 
 shell:
 	docker run --rm -it \
-			--entrypoint bash \
+			-e SHOW_ONLY_ERRORS=${SHOW_ONLY_ERRORS} \
+			-e MAX_ERROR_RATE=${MAX_ERROR_RATE} \
+			-e TOKEN=${TOKEN} \
+			-e INSTANA_ENDPOINT=${INSTANA_ENDPOINT} \
+			-v ${PWD}:/src \
+			--entrypoint sh \
 			rosscdh/nisshin-maru:latest

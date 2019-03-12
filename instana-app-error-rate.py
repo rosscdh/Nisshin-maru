@@ -3,7 +3,13 @@ import time
 import json
 import pprint
 import requests
-from alkali import Database, Model, fields, tznow
+
+import numpy as np
+import pandas as pd
+
+from tinydb import TinyDB, Query
+from tinydb.storages import JSONStorage
+from tinydb.middlewares import CachingMiddleware
 
 TOKEN = os.getenv('TOKEN', '')
 INSTANA_ENDPOINT = os.getenv('INSTANA_ENDPOINT', '')
@@ -17,19 +23,7 @@ assert INSTANA_ENDPOINT, 'You must define a INSTANA_ENDPOINT'
 TRENDS = dict()
 PREVIOUS = dict()
 
-
-{"service": "recipe-details-28-b75tp", "error_rate": 0.0, "message": "recipe-details-28-b75tp is ok", "when": "2019-03-11 15:43:50", "cmd": null}
-
-class Entry(Model):
-   when           = fields.DateTimeField(primary_key=True)
-   service        = fields.StringField()
-   message        = fields.StringField()
-   cmd            = fields.StringField()
-   error_rate     = fields.FloatField()
-   created        = fields.DateTimeField(auto_now_add=True)
-
-db = Database(models=[Entry], save_on_exit=True)
-
+Item = Query()
 
 def get_data():
     headers = {
@@ -69,15 +63,16 @@ def get_data():
         print(resp.status_code, resp.content)
         return []
 
-def check_errors():
+def check_errors(db):
     items = get_data()
     when = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     # print('*****' * 10)
     # print('********** {} **********'.format(when))
     # print('*****' * 10)
     #pprint.pprint(items)
+    entries = []
     for data in items:
-        #import pdb;pdb.set_trace()
+
         metrics_a, error_rate = data.get('metrics', {}).get('errorsAgg', [])[0]
         service = data.get('name')
 
@@ -85,41 +80,51 @@ def check_errors():
             'service': service,
             'error_rate': error_rate,
             'message': '',
-            'when': when
+            'when': when,
+            'trending': None,
+            'trend': None,
         }
-        # PREVIOUS[service] = 0 if service not in PREVIOUS else PREVIOUS[service][0:10] 
-        # TRENDS[service] = [] if service not in TRENDS else TRENDS[service][0:10]
-        # TRENDS[service].insert(0, error_rate)
 
-        # trend = sum(TRENDS[service])
+        qs = db.search(Item.service==service)[0:30]
+        if qs:
+            df = pd.DataFrame(qs)
+            df.sort_values('when', inplace=True)
 
-        # if PREVIOUS[service] > trend:
-        #     trending = 'up'
-        # elif PREVIOUS[service] < trend:
-        #     trending = 'down'
-        # else:
-        #     trending = 'no-change'
+            info['trending'] = 'steady'
+            info['trend'] = df.error_rate.mean()
+            if df.error_rate.is_monotonic_increasing is True:
+                info['trending'] = 'up'
+            if df.error_rate.is_monotonic_decreasing is True:
+                info['trending'] = 'down'
+            if info['trend'] == 0.0:
+                info['trending'] = '-'
 
-        # info['trending'] = trending
-        # PREVIOUS[service] = trend
-        
-        if error_rate >= MAX_ERROR_RATE:
-            info['message'] = '{} is erroring: error_rate: {}'.format(service, error_rate)
-            info['cmd'] = 'oc delete pod {}'.format(service)
-            print("\033[1;31;40m {}".format(json.dumps(info)))
+
+        #if error_rate >= MAX_ERROR_RATE:
+        if info['trending'] in ['up', 'down']:
+            if info['trending'] in ['up']:
+                info['message'] = '{} is trending up: error_rate: {}'.format(service, error_rate)
+                info['cmd'] = 'oc delete pod {}'.format(service)
+                print("\033[1;31;40m {}".format(json.dumps(info)))
+
+            if info['trending'] in ['down']:
+                info['message'] = '{} is trending down'.format(service)
+                print("\033[1;32;40m {}".format(json.dumps(info)))
         else:
             if SHOW_ONLY_ERRORS == 0:
                 info['message'] = '{} is ok'.format(service)
                 info['cmd'] = None
-                print("\033[1;32;40m {}".format(json.dumps(info)))
+                print("\033[1;248;40m {}".format(json.dumps(info)))
 
-        entry = Entry(**info)
-        entry.save()
+        entries.append(info)
 
-    db.store()
+    db.insert_multiple(entries)
     
 
 if __name__ == "__main__":
     while True:
-        check_errors()
+        db = TinyDB('db.json', storage=CachingMiddleware(JSONStorage))
+        check_errors(db=db)
+        # import pdb;pdb.set_trace()
         time.sleep(REFRESH)
+        db.close()
